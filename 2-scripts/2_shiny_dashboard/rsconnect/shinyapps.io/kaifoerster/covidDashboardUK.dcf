@@ -1,0 +1,13 @@
+name: covidDashboardUK
+title: covidDashboardUK
+username:
+account: kaifoerster
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 5354289
+bundleId: 5408852
+url: https://kaifoerster.shinyapps.io/coviddashboarduk/
+when: 1640452423.15501
+lastSyncTime: 1640452423.15501
+asMultiple: FALSE
+asStatic: FALSE
