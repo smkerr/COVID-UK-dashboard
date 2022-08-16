@@ -1,12 +1,13 @@
 ### STEP #1: PREPARE DATA
 
 # load packages
-pacman::p_load(httr, # make API request 
-               tidyr, # tidy data
-               jsonlite, # read JSON text 
-               dplyr, # wrangle data
-               sf, # simple features
-               tigris) # merge spatial data 
+pacman::p_load(httr,      # make API request 
+               tidyr,     # tidy data
+               jsonlite,  # read JSON text 
+               dplyr,     # wrangle data
+               sf,        # simple features
+               tigris,    # merge spatial data 
+               lubridate) # wrangle dates
 
 # create list of LTLA area names using list from UK COVID Database (https://coronavirus.data.gov.uk/)
 areaCodes <- c("E06000001", "E06000002", "E06000003", "E06000004", "E06000005", 
@@ -132,6 +133,36 @@ covid_df <- all_localities_df %>%
   unnest_longer(demographicsplit) %>% 
   unnest_wider(demographicsplit)
 
+
+###############
+
+# test 
+covid_ltla <- readr::read_rds("/Users/steve/Documents/GitHub/COVID-UK-dashboard/2-scripts/2_shiny_dashboard/covid_ltla.RDS")
+
+# tidy data
+# compress to weekly aggregates
+covid_ltla_test1 <- head(covid_ltla, 100) %>%
+  st_drop_geometry() %>% 
+  select(areaCode, date, age, rollingRate) %>% 
+  filter(age != 'unassigned' & age != '00_59' & age != '60+') %>% # remove `unassigned` observations and redundant age groupings
+  mutate(date = floor_date(date, unit = "week")) %>% 
+  group_by(areaCode, date, age) %>% 
+  summarize(rollingRate = sum(rollingRate)) %>% 
+  ungroup() #%>% 
+#select(areaCode, areaName, date, age, rollingRate) # select relevant variables
+
+# don't pair code with geometry data until after compressing data by week 
+
+covid_ltla_test2 <- head(covid_ltla, 100) %>%
+  select(areaCode, areaName) %>% 
+  filter(age != 'unassigned' & age != '00_59' & age != '60+') %>% # remove `unassigned` observations and redundant age groupings
+  mutate(date = floor_date(date, unit = "week")) %>% 
+  group_by(areaCode, date, age) %>% 
+  summarize(rollingRate = sum(rollingRate)) #%>% 
+#select(areaCode, areaName, date, age, rollingRate) # select relevant variables
+
+###############
+
 # load UK Locality Boundary shapefile 
 ltla_sf <- st_read("./1-data/LTLA_2019/LTLA_2019.shp")
 
@@ -140,12 +171,6 @@ names(ltla_sf)[names(ltla_sf) == 'lad19cd'] <- 'areaCode'
 
 # merge data 
 covid_ltla <- geo_join(data_frame = covid_df, spatial_data = ltla_sf, by = 'areaCode', how = "inner")
-
-# tidy data
-covid_ltla <- covid_ltla %>% 
-  filter(age != 'unassigned' & age != '00_59' & age != '60+') %>% # remove `unassigned` observations (mostly NAs) 
-  # remove below 60 and 60+ age groups so that we're only looking at five year age intervals
-  select(areaCode, areaName, date, age, rollingRate, geometry) # select relevant variables
 
 # save dataframe for Shiny dashboard
 saveRDS(covid_ltla, "./2-scripts/2_shiny_dashboard/covid_ltla.RDS")
